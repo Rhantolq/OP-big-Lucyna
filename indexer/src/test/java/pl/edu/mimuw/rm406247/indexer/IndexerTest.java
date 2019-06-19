@@ -5,8 +5,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
-
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
@@ -25,12 +23,16 @@ public class IndexerTest {
 
     @Test
     public void main() {
-        Assert.assertTrue(true);
+        String type1 = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        String type2 = "application/vnd.oasis.opendocument.text";
+        Assert.assertTrue(type1.contains("openxmlformats"));
+        Assert.assertTrue(type2.contains("opendocument.text"));
+
     }
 
     private String run(String args[]) {
         outContent.reset();
-        Indexer.main(args);
+        IndexerMain.main(args);
         return outContent.toString();
     }
 }
