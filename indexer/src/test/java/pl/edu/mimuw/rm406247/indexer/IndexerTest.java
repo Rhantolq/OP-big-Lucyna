@@ -27,7 +27,6 @@ public class IndexerTest {
         String type2 = "application/vnd.oasis.opendocument.text";
         Assert.assertTrue(type1.contains("openxmlformats"));
         Assert.assertTrue(type2.contains("opendocument.text"));
-
     }
 
     private String run(String args[]) {

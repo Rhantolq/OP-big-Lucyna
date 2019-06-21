@@ -41,7 +41,7 @@ public class IndexerMain {
                     }
                 }
 
-                if (args[0].equals("--add") || args[0].equals("--rm")) {
+                else if (args[0].equals("--add") || args[0].equals("--rm")) {
                     if (args.length != 2) {
                         System.out.println("Invalid number of arguments.");
                     }
@@ -63,7 +63,7 @@ public class IndexerMain {
                     }
                 }
 
-                if (args[0].equals("--reindex")) {
+                else if (args[0].equals("--reindex")) {
                     if (args.length != 1) {
                         System.out.println("Invalid number of arguments.");
                     }
@@ -72,7 +72,7 @@ public class IndexerMain {
                     }
                 }
 
-                if (args[0].equals("--list")) {
+                else if (args[0].equals("--list")) {
                     if (args.length != 1) {
                         System.out.println("Invalid number of arguments.");
                     }
@@ -87,6 +87,10 @@ public class IndexerMain {
                             System.err.println("No file containing indexed directories.");
                         }
                     }
+                }
+
+                else {
+                    System.out.println("Invalid parameter.");
                 }
             }
             else {

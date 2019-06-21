@@ -7,4 +7,6 @@ usage:
 	searcher:
 		java -cp indexer-1.0-SNAPSHOT-jar-with-dependencies.jar pl.edu.mimuw.rm406247.searcher.Searcher
 		
-Replace jar name if necessary.
+Change jar name to the name of the one generated in target/ if necessary.
+
+Robert Michna rm406247

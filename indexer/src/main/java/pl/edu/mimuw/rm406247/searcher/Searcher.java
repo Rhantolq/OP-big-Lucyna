@@ -248,8 +248,8 @@ public class Searcher {
                             }
                         }
                         catch (IOException e) {
-                            System.err.println("Got IOException while opening index directory.");
-                            System.err.println(e.getMessage());
+                            terminal.writer().println("Got IOException while opening index directory.");
+                            terminal.writer().println(e.getMessage());
                         }
                     }
                 }
