@@ -228,7 +228,7 @@ public class Searcher {
                                                     text,
                                                     10);
                                             for (String fragment : fragments) {
-                                                terminal.writer().println(fragment.trim());
+                                                terminal.writer().println(fragment.replace("\n", ""));
                                                 terminal.writer().println(new AttributedStringBuilder()
                                                         .style(AttributedStyle.DEFAULT.faint())
                                                         .append(" ...")

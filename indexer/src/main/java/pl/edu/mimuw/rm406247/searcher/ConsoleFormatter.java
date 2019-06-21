@@ -22,6 +22,7 @@ public class ConsoleFormatter implements Formatter {
             return originalText;
         }
         return new AttributedStringBuilder()
+                .append("")
                 .style(AttributedStyle.DEFAULT.foreground(color))
                 .append(originalText)
                 .toAnsi();
