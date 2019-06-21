@@ -1,3 +1,6 @@
+/** Copyright (c) Robert Michna
+ * rm406247@students.mimuw.edu.pl
+ */
 package pl.edu.mimuw.rm406247.indexer;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -43,10 +46,9 @@ public class Indexer implements AutoCloseable {
             analyzer = IndexerUtils.defaultAnalyzer();
         }
         catch (IOException e) {
-            System.out.println("Fatal error creating analyzer.");
-            System.out.println(e.getMessage());
-            System.exit(1);
-            return; // to ignore uninitialized warnings.
+            System.err.println("Fatal error creating analyzer.");
+            System.err.println(e.getMessage());
+            throw e;
         }
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
 
@@ -60,8 +62,8 @@ public class Indexer implements AutoCloseable {
             }
         }
         catch (IOException e) {
-            System.out.println("Got IOException while opening index directory.");
-            System.out.println(e.getMessage());
+            System.err.println("Got IOException while opening index directory.");
+            System.err.println(e.getMessage());
             throw e;
         }
 
@@ -69,8 +71,8 @@ public class Indexer implements AutoCloseable {
             indexWriter = new IndexWriter(indexDir, iwc);
         }
         catch (IOException e) {
-            System.out.println("Got IOException while opening index.");
-            System.out.println(e.getMessage());
+            System.err.println("Got IOException while opening index.");
+            System.err.println(e.getMessage());
             throw e;
         }
     }
@@ -83,7 +85,7 @@ public class Indexer implements AutoCloseable {
      * @throws IOException
      */
     public void indexDocs(Path path, Consumer<Path> fileAction) throws IOException {
-        if (Files.isDirectory(path)) {
+        if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
             FileVisitor<Path> fileVisitor = new IndexingVisitor(fileAction);
             Files.walkFileTree(path, fileVisitor);
         }
@@ -127,10 +129,13 @@ public class Indexer implements AutoCloseable {
                     lang_short = "pl";
                 }
 
-                StringField fieldPath = new StringField("path", path.toAbsolutePath().toString(), Field.Store.YES);
-                TextField fieldContent = new TextField("body-" + lang_short, content, Field.Store.YES);
+                StringField fieldPath =
+                        new StringField("path", path.toAbsolutePath().toString(), Field.Store.YES);
+                TextField fieldContent =
+                        new TextField("body-" + lang_short, content, Field.Store.YES);
                 String titleText = path.toFile().getName().replace(".", " ");
-                TextField fieldTitle = new TextField("title-" + lang_short, titleText, Field.Store.YES);
+                TextField fieldTitle =
+                        new TextField("title-" + lang_short, titleText, Field.Store.YES);
                 document.add(fieldPath);
                 document.add(fieldContent);
                 document.add(fieldTitle);
@@ -146,12 +151,12 @@ public class Indexer implements AutoCloseable {
                 }
             }
             catch (TikaException te) {
-                System.out.println("Tika exception reading file " + path.toString());
-                System.out.println(te.getMessage());
+                System.err.println("Tika exception reading file " + path.toString());
+                System.err.println(te.getMessage());
             }
             catch (IOException e){
-                System.out.println("IOException reading file " + path.toString());
-                System.out.println(e.getMessage());
+                System.err.println("IOException reading file " + path.toString());
+                System.err.println(e.getMessage());
             }
         }
         else {
@@ -181,8 +186,8 @@ public class Indexer implements AutoCloseable {
                 indexWriter.commit();
             }
             catch (IOException e) {
-                System.out.println("IOException reading file " + path.toString());
-                System.out.println(e.getMessage());
+                System.err.println("IOException reading file " + path.toString());
+                System.err.println(e.getMessage());
             }
         }
         else {
@@ -190,6 +195,9 @@ public class Indexer implements AutoCloseable {
         }
     }
 
+    /** Removes all documents which have @p path as their prefix.
+     * @param path - Folder / file to delete.
+     */
     public void removeDoc(Path path) {
         Query query;
         try (IndexReader indexReader = DirectoryReader.open(indexDir)) {
@@ -197,37 +205,38 @@ public class Indexer implements AutoCloseable {
             query = new PrefixQuery(new Term("path", path.toAbsolutePath().toString()));
         }
         catch (IOException e) {
-            System.out.println("Failed to open searcher.");
-            System.out.println(e.getMessage());
+            System.err.println("Failed to open searcher in removeDoc.");
+            System.err.println(e.getMessage());
             return;
         }
         try {
             indexWriter.deleteDocuments(query);
         }
         catch (IOException e) {
-            System.out.println("Could not delete documents.");
-            System.out.println(e.getMessage());
+            System.err.println("Could not delete documents.");
+            System.err.println(e.getMessage());
         }
     }
 
+    /// Adds documents.
     public void add(Path docsPath) {
         try {
             indexDocs(docsPath, this::addDocFunction);
         }
         catch (IOException e) {
-            System.out.println("IOException in walkFileTree:");
-            System.out.println(e.getMessage());
+            System.err.println("IOException in walkFileTree:");
+            System.err.println(e.getMessage());
         }
         try {
             indexWriter.commit();
         }
         catch (IOException e) {
-            System.out.println("Could not save changes to index.");
-            System.out.println(e.getMessage());
+            System.err.println("Could not save changes to index.");
+            System.err.println(e.getMessage());
         }
     }
 
-    /** Adds directory / file to the index.
+    /** Adds directory / file to the index and saves the path to watched paths.
      * @param docsPath - Path to the file / directory.
      */
     public void addToIndexedPaths(Path docsPath) {
@@ -237,8 +246,8 @@ public class Indexer implements AutoCloseable {
             fileWriter.write(docsPath.toAbsolutePath().toString() + "\n");
         }
         catch (IOException e) {
-            System.out.println("IOException raised by add:");
-            System.out.println(e.getMessage());
+            System.err.println("IOException raised by add:");
+            System.err.println(e.getMessage());
         }
     }
 
@@ -248,37 +257,46 @@ public class Indexer implements AutoCloseable {
             indexWriter.commit();
         }
         catch (IOException e) {
-            System.out.println("Could not save changes to index.");
-            System.out.println(e.getMessage());
+            System.err.println("Could not save changes to index.");
+            System.err.println(e.getMessage());
         }
     }
 
-    /** Removes directory / file from the index.
+    /** Removes directory / file from the index and removes the path to watched paths.
      * @param docsPath - Path to the file / directory.
      */
     public void removeFromIndexedPaths(Path docsPath) {
+        boolean happened = false;
         StringBuilder paths = new StringBuilder();
         File indexedDirs = new File(indexPath + File.separator + "indexed_dirs.txt");
         try (Scanner scanner = new Scanner(indexedDirs)){
-            remove(docsPath);
             while (scanner.hasNextLine()) {
                 String path = scanner.nextLine();
                 if (!path.equals(docsPath.toAbsolutePath().toString())) {
                     paths.append(path);
                 }
+                else {
+                    happened = true;
+                    remove(docsPath);
+                }
             }
         }
         catch (IOException e) {
-            System.out.println("IOException raised by remove:");
-            System.out.println(e.getMessage());
+            System.err.println("IOException raised by remove:");
+            System.err.println(e.getMessage());
+        }
+
+        if (!happened) {
+            System.out.println("Specified path was not previously added by --add command.");
+            return;
         }
 
         try (FileWriter fileWriter = new FileWriter(indexedDirs, false)) {
             fileWriter.write(paths.toString());
         }
         catch (IOException e) {
-            System.out.println("Failed to save directories:");
-            System.out.println(e.getMessage());
+            System.err.println("Failed to save directories:");
+            System.err.println(e.getMessage());
         }
     }
 
@@ -288,25 +306,26 @@ public class Indexer implements AutoCloseable {
             while (scanner.hasNextLine()) {
                 Path docsPath = Paths.get(scanner.nextLine());
                 if (!Files.isReadable(docsPath)) {
-                    System.out.println("Directory "
+                    System.err.println("Directory "
                             + docsPath
                             + " does not exist or is not readable");
                     close();
-                    System.exit(1);
+                    return;
                 }
                 remove(docsPath);
                 add(docsPath);
             }
         }
         catch(FileNotFoundException e) {
-            System.out.println("No file containing indexed directories.");
+            System.err.println("No file containing indexed directories.");
+            return;
         }
         try {
             indexWriter.commit();
         }
         catch (IOException e) {
-            System.out.println("Could not save changes to index.");
-            System.out.println(e.getMessage());
+            System.err.println("Could not save changes to index.");
+            System.err.println(e.getMessage());
         }
     }
 
@@ -323,8 +342,8 @@ public class Indexer implements AutoCloseable {
             indexWriter.commit();
         }
         catch (IOException e) {
-            System.out.println("Could not save changes to index.");
-            System.out.println(e.getMessage());
+            System.err.println("Could not save changes to index.");
+            System.err.println(e.getMessage());
         }
     }
 
@@ -334,7 +353,7 @@ public class Indexer implements AutoCloseable {
             indexDir.close();
         }
         catch (IOException e) {
-            System.out.println("Error closing indexer.");
+            System.err.println("Error closing indexer.");
         }
     }
 }

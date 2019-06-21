@@ -1,3 +1,6 @@
+/** Copyright (c) Robert Michna
+ * rm406247@students.mimuw.edu.pl
+ */
 package pl.edu.mimuw.rm406247.searcher;
 
 import java.io.IOException;
@@ -25,7 +28,6 @@ import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 import pl.edu.mimuw.rm406247.IndexerUtils;
 
-
 public class Searcher {
 
     private Searcher() {}
@@ -52,7 +54,7 @@ public class Searcher {
         Path indexPath = IndexerUtils.indexPath();
 
         if (!Files.isReadable(indexPath) || !Files.isWritable(indexPath)) {
-            System.out.println("Directory "
+            System.err.println("Directory "
                     + indexPath
                     + " does not exist or the application does not have valid permissions.");
         }
@@ -67,12 +69,13 @@ public class Searcher {
              analyzer = IndexerUtils.defaultAnalyzer();
         }
         catch (IOException e) {
-            System.out.println("Fatal error creating analyzer.");
-            System.out.println(e.getMessage());
+            System.err.println("Fatal error creating analyzer.");
+            System.err.println(e.getMessage());
             System.exit(1);
             return; // to ignore uninitialized warnings.
         }
         IndexSearcher indexSearcher;
+
 
         try (Terminal terminal = TerminalBuilder.builder()
                 .jna(false)
@@ -80,7 +83,7 @@ public class Searcher {
                 .build()) {
             LineReader lineReader = LineReaderBuilder.builder()
                     .terminal(terminal)
-                    .completer(new Completers.FileNameCompleter())
+                    .completer(new TermCompleter(indexPath, analyzer))
                     .build();
 
 
@@ -133,13 +136,33 @@ public class Searcher {
                                 showColors = commandArgs[1].equals("on");
                             }
                         }
+                        else if (commandArgs[0].equals("%limit")) {
+                            if (commandArgs.length != 2) {
+                                terminal.writer().println("Invalid number of arguments.");
+                                continue;
+                            }
+                            try {
+                                limit = Integer.parseInt(commandArgs[1]);
+                                if (limit < 0) {
+                                    throw new NumberFormatException("Invalid number.");
+                                }
+                            }
+                            catch (NumberFormatException e) {
+                                terminal.writer().println("Must be a number greater than zero.");
+                            }
+                            if (limit == 0) {
+                                limit = Integer.MAX_VALUE;
+                            }
+                        }
                         else {
                             terminal.writer().println("Invalid command.");
                         }
                     }
                     else {
                         if (queryType != QueryType.PHRASE && command.contains(" ")) {
-                            terminal.writer().println(queryType.toString() + " requires");
+                            terminal.writer()
+                                    .println(queryType.toString() + " query should contain exactly one word.");
+                            continue;
                         }
                         try (FSDirectory indexDir = FSDirectory.open(indexPath)) {
                             try (IndexReader indexReader = DirectoryReader.open(indexDir)) {
@@ -154,34 +177,30 @@ public class Searcher {
                                 if (queryType == QueryType.TERM) {
                                     query1 = new TermQuery(new Term("body-" + lang, body));
                                     query2 = new TermQuery(new Term("title-" + lang, title));
-                                }
-                                else if (queryType == QueryType.PHRASE) {
+                                } else if (queryType == QueryType.PHRASE) {
                                     query1 = new PhraseQuery("body-" + lang,
                                             bodyTerms.toArray(new String[bodyTerms.size()]));
                                     query2 = new PhraseQuery("title-" + lang,
                                             titleTerms.toArray(new String[titleTerms.size()]));
-                                }
-                                else if (queryType == QueryType.FUZZY) {
+                                } else if (queryType == QueryType.FUZZY) {
                                     query1 = new FuzzyQuery(new Term("body-" + lang, body));
                                     query2 = new FuzzyQuery(new Term("title-" + lang, title));
                                 }
 
                                 if (queryType == QueryType.PREFIX) { // additional functionality
                                     query = new PrefixQuery(new Term("path", command));
-                                }
-                                else {
+                                } else {
                                     query = new BooleanQuery.Builder()
                                             .add(query1, BooleanClause.Occur.SHOULD)
                                             .add(query2, BooleanClause.Occur.SHOULD)
                                             .build();
                                 }
 
-                                TopDocs topDocs = indexSearcher.search(query, limit);
+                                TopDocs topDocs = indexSearcher.search(query, Integer.MAX_VALUE);
                                 Formatter formatter;
                                 if (showColors) {
                                     formatter = new ConsoleFormatter(AttributedStyle.RED);
-                                }
-                                else {
+                                } else {
                                     formatter = new ConsoleFormatter(AttributedStyle.WHITE);
                                 }
                                 QueryScorer scorer = new QueryScorer(query);
@@ -209,8 +228,11 @@ public class Searcher {
                                                     text,
                                                     10);
                                             for (String fragment : fragments) {
-                                                terminal.writer().print(fragment);
-                                                terminal.writer().println(" ...");
+                                                terminal.writer().println(fragment.trim());
+                                                terminal.writer().println(new AttributedStringBuilder()
+                                                        .style(AttributedStyle.DEFAULT.faint())
+                                                        .append(" ...")
+                                                        .toAnsi());
                                             }
                                         }
                                         catch (Exception e) {
@@ -226,8 +248,8 @@ public class Searcher {
                             }
                         }
                         catch (IOException e) {
-                            terminal.writer().println("Got IOException while opening index directory.");
-                            terminal.writer().println(e.getMessage());
+                            System.err.println("Got IOException while opening index directory.");
+                            System.err.println(e.getMessage());
                         }
                     }
                 }

@@ -1,3 +1,6 @@
+/** Copyright (c) Robert Michna
+ * rm406247@students.mimuw.edu.pl
+ */
 package pl.edu.mimuw.rm406247.indexer;
 
 import pl.edu.mimuw.rm406247.IndexerUtils;
@@ -21,7 +24,7 @@ public class IndexerMain {
         Path indexPath = IndexerUtils.indexPath();
 
         if (!Files.isReadable(indexPath) || !Files.isWritable(indexPath)) {
-            System.out.println("Directory "
+            System.err.println("Directory "
                     + indexPath
                     + " does not exist or the application does not have valid permissions.");
             System.exit(1);
@@ -45,7 +48,7 @@ public class IndexerMain {
                     else {
                         Path docsPath = Paths.get(args[1]);
                         if (!Files.isReadable(docsPath)) {
-                            System.out.println("Directory "
+                            System.err.println("Directory "
                                     + docsPath
                                     + " does not exist or is not readable");
                             indexer.close();
@@ -61,7 +64,7 @@ public class IndexerMain {
                 }
 
                 if (args[0].equals("--reindex")) {
-                    if (args.length != 2) {
+                    if (args.length != 1) {
                         System.out.println("Invalid number of arguments.");
                     }
                     else {
@@ -70,7 +73,7 @@ public class IndexerMain {
                 }
 
                 if (args[0].equals("--list")) {
-                    if (args.length != 2) {
+                    if (args.length != 1) {
                         System.out.println("Invalid number of arguments.");
                     }
                     else {
@@ -81,7 +84,7 @@ public class IndexerMain {
                             }
                         }
                         catch (FileNotFoundException e) {
-                            System.out.println("No file containing indexed directories.");
+                            System.err.println("No file containing indexed directories.");
                         }
                     }
                 }
@@ -96,20 +99,20 @@ public class IndexerMain {
                     }
                 }
                 catch (IOException e) {
-                    System.out.println("Could not open file containing paths.");
-                    System.out.println(e.getMessage());
+                    System.err.println("Could not open file containing paths.");
+                    System.err.println(e.getMessage());
                 }
                 try {
                     new Watcher(indexer, paths).processEvents();
                 }
                 catch (IOException e) {
-                    System.out.println("Couldn't initialize watchservice.");
-                    System.out.println(e.getMessage());
+                    System.err.println("Could not initialize watchservice.");
+                    System.err.println(e.getMessage());
                 }
             }
         }
         catch (IOException e) {
-            System.out.println("Error opening index.");
+            System.err.println("Error opening index.");
         }
         System.exit(0);
     }

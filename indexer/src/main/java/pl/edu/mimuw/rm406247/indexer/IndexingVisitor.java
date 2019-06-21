@@ -1,3 +1,6 @@
+/** Copyright (c) Robert Michna
+ * rm406247@students.mimuw.edu.pl
+ */
 package pl.edu.mimuw.rm406247.indexer;
 
 
@@ -24,8 +27,8 @@ public class IndexingVisitor extends SimpleFileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFileFailed(Path file, IOException io) {
-        System.out.println("Couldn't visit " + file.toString());
-        System.out.println(io.getMessage());
+        System.err.println("Couldn't visit " + file.toString());
+        System.err.println(io.getMessage());
         return FileVisitResult.CONTINUE;
     }
 }

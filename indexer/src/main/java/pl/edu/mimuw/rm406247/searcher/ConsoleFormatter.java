@@ -1,3 +1,6 @@
+/** Copyright (c) Robert Michna
+ * rm406247@students.mimuw.edu.pl
+ */
 package pl.edu.mimuw.rm406247.searcher;
 
 import org.apache.lucene.search.highlight.Formatter;
