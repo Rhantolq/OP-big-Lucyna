@@ -84,7 +84,7 @@ public class Indexer implements AutoCloseable {
      * @param fileAction - Action to be performed on the files.
      * @throws IOException
      */
-    public void indexDocs(Path path, Consumer<Path> fileAction) throws IOException {
+    private void indexDocs(Path path, Consumer<Path> fileAction) throws IOException {
         if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
             FileVisitor<Path> fileVisitor = new IndexingVisitor(fileAction);
             Files.walkFileTree(path, fileVisitor);
@@ -198,7 +198,7 @@ public class Indexer implements AutoCloseable {
     /** Removes all documents which have @p path as their prefix.
      * @param path - Folder / file to delete.
      */
-    public void removeDoc(Path path) {
+    private void removeDoc(Path path) {
         Query query;
         try (IndexReader indexReader = DirectoryReader.open(indexDir)) {
             IndexSearcher indexSearcher = new IndexSearcher(indexReader);

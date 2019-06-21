@@ -74,6 +74,12 @@ public class Watcher {
                 register(dir);
                 return FileVisitResult.CONTINUE;
             }
+            @Override
+            public FileVisitResult visitFileFailed(Path dir, IOException io) {
+                System.err.println("Couldn't watch directory " + dir.toAbsolutePath().toString());
+                System.err.println(io.getMessage());
+                return FileVisitResult.CONTINUE;
+            }
         });
     }
 

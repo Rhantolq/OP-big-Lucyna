@@ -17,7 +17,6 @@ import org.apache.lucene.search.*;
 import org.apache.lucene.search.highlight.*;
 import org.apache.lucene.store.FSDirectory;
 
-import org.jline.builtins.Completers;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
@@ -76,7 +75,6 @@ public class Searcher {
         }
         IndexSearcher indexSearcher;
 
-
         try (Terminal terminal = TerminalBuilder.builder()
                 .jna(false)
                 .jansi(true)
@@ -85,7 +83,6 @@ public class Searcher {
                     .terminal(terminal)
                     .completer(new TermCompleter(indexPath, analyzer))
                     .build();
-
 
             while (true) {
                 try {

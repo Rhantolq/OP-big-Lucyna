@@ -27,7 +27,7 @@ public class IndexingVisitor extends SimpleFileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFileFailed(Path file, IOException io) {
-        System.err.println("Couldn't visit " + file.toString());
+        System.err.println("Couldn't visit " + file.toAbsolutePath().toString());
         System.err.println(io.getMessage());
         return FileVisitResult.CONTINUE;
     }
