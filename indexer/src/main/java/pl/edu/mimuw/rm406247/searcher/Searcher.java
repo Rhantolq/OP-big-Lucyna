@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Scanner;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -14,6 +13,16 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.highlight.*;
 import org.apache.lucene.store.FSDirectory;
+
+import org.jline.builtins.Completers;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
+import org.jline.utils.AttributedStringBuilder;
+import org.jline.utils.AttributedStyle;
 import pl.edu.mimuw.rm406247.IndexerUtils;
 
 
@@ -64,152 +73,175 @@ public class Searcher {
             return; // to ignore uninitialized warnings.
         }
         IndexSearcher indexSearcher;
-        Scanner scanner = new Scanner(System.in);
 
-        System.out.print(">");
-        while (scanner.hasNext()) {
-            String command = scanner.nextLine();
-            if (command.length() == 0) {
-                continue;
-            }
-            if (command.charAt(0) == '%') {
-                String[] commandArgs =  command.split(" ");
-                boolean queryChange = false;
-                for (QueryType type : QueryType.values()) {
-                    if (commandArgs[0].equals("%" + type.toString().toLowerCase())) {
-                        if (commandArgs.length > 1) {
-                            System.out.println("Too many arguments for %term command.");
-                            break;
-                        }
-                        queryType = type;
-                        queryChange = true;
-                    }
-                }
-                if (queryChange) {
-                    continue;
-                }
-                else if (commandArgs[0].equals("%lang")) {
-                    if (commandArgs.length != 2) {
-                        System.out.println("Invalid number of arguments.");
-                        continue;
-                    }
-                    if (!(commandArgs[1].equals("pl") || commandArgs[1].equals("en"))) {
-                        System.out.println("Invalid language. (en/pl expected)");
-                        continue;
-                    }
-                    lang = commandArgs[1];
-                }
-                else if (commandArgs[0].equals("%color") || commandArgs[0].equals("%details")) {
-                    if (commandArgs.length != 2) {
-                        System.out.println("Invalid number of arguments.");
-                        continue;
-                    }
-                    if (!(commandArgs[1].equals("on") || commandArgs[1].equals("off"))) {
-                        System.out.println("Invalid color option. (on/off expected)");
-                        continue;
-                    }
-                    if (commandArgs[0].equals("%details")) {
-                        showDetails = commandArgs[ 1].equals("on");
-                    }
-                    else if (commandArgs[0].equals("%color")) {
-                        showColors = commandArgs[1].equals("on");
-                    }
-                }
-                else {
-                    System.out.println("Invalid command.");
-                }
-            }
-            else {
-                if (queryType != QueryType.PHRASE && command.contains(" ")) {
-                    System.out.println(queryType.toString() + " requires");
-                }
-                try (FSDirectory indexDir = FSDirectory.open(indexPath)) {
-                    try (IndexReader indexReader = DirectoryReader.open(indexDir)){
-                        indexSearcher = new IndexSearcher(indexReader);
-                        Query query;
-                        Query query1 = null, query2 = null;
-                        ArrayList<String> bodyTerms = analyze("body-" + lang, command, analyzer);
-                        ArrayList<String> titleTerms = analyze("title-" + lang, command, analyzer);
-                        String body = (bodyTerms.size() > 0) ? bodyTerms.get(0) : command.toLowerCase();
-                        String title = (titleTerms.size() > 0) ? titleTerms.get(0) : command.toLowerCase();
-                        System.out.println("Bodyterms " + body);
-                        for (String s : bodyTerms) {
-                            System.out.print("'" + s + "' ");
-                        }
-                        System.out.println("\nTitleterms " + title);
-                        for (String s : titleTerms) {
-                            System.out.print("'" + s + "' ");
-                        }
-                        System.out.println("\nText = " + command + ":");
-                        if (queryType == QueryType.TERM) {
-                            query1 = new TermQuery(new Term("body-" + lang, body));
-                            query2 = new TermQuery(new Term("title-" + lang, title));
-                        }
-                        else if (queryType == QueryType.PHRASE) {
-                            query1 = new PhraseQuery("body-" + lang, bodyTerms.toArray(new String[bodyTerms.size()]));
-                            query2 = new PhraseQuery("title-" + lang, titleTerms.toArray(new String[titleTerms.size()]));
-                        }
-                        else if (queryType == QueryType.FUZZY) {
-                            query1 = new FuzzyQuery(new Term("body-" + lang, body));
-                            query2 = new FuzzyQuery(new Term("title-" + lang, title));
-                        }
-                        if (queryType == QueryType.PREFIX) { // additional functionality
-                            query = new PrefixQuery(new Term("path", command));
-                        }
-                        else {
-                             query = new BooleanQuery.Builder()
-                                    .add(query1, BooleanClause.Occur.SHOULD)
-                                    .add(query2, BooleanClause.Occur.SHOULD)
-                                    .build();
-                        }
-                        TopDocs topDocs = indexSearcher.search(query, limit);
-                        Formatter formatter;
-                        if (showColors) {
-                            formatter = new ConsoleFormatter("***", "***");
-                        }
-                        else {
-                            formatter = new ConsoleFormatter("", "");
-                        }
-                        QueryScorer scorer = new QueryScorer(query);
-                        Highlighter highlighter = new Highlighter(formatter, scorer);
-                        Fragmenter fragmenter = new SimpleSpanFragmenter(scorer, 70);
-                        highlighter.setTextFragmenter(fragmenter);
+        try (Terminal terminal = TerminalBuilder.builder()
+                .jna(false)
+                .jansi(true)
+                .build()) {
+            LineReader lineReader = LineReaderBuilder.builder()
+                    .terminal(terminal)
+                    .completer(new Completers.FileNameCompleter())
+                    .build();
 
-                        System.out.println("File count: " + topDocs.scoreDocs.length);
-                        for (int i = 0; i < Math.min(limit, topDocs.scoreDocs.length); i++) {
-                            int docId = topDocs.scoreDocs[i].doc;
-                            Document doc = indexSearcher.doc(docId);
-                            System.out.println(doc.getField("path").stringValue() + ":");
-                            if (showDetails) {
-                                String text = doc.get("body-" + lang);
-                                try {
-                                    String[] fragments = highlighter.getBestFragments(analyzer,
-                                            "body-" + lang,
-                                            text,
-                                            10);
-                                    for (String fragment : fragments) {
-                                        System.out.print(fragment);
-                                        System.out.println(" ...");
-                                    }
+
+            while (true) {
+                try {
+                    String command = lineReader.readLine("> ");
+                    if (command.length() == 0) {
+                        continue;
+                    }
+                    if (command.charAt(0) == '%') {
+                        String[] commandArgs = command.split(" ");
+                        boolean queryChange = false;
+                        for (QueryType type : QueryType.values()) {
+                            if (commandArgs[0].equals("%" + type.toString().toLowerCase())) {
+                                if (commandArgs.length > 1) {
+                                    terminal.writer().println("Too many arguments for %term command.");
+                                    break;
                                 }
-                                catch (Exception e) {
-                                    System.out.println("Error fetching context.");
-                                    System.out.println(e.getMessage());
-                                }
+                                queryType = type;
+                                queryChange = true;
                             }
                         }
+                        if (queryChange) {
+                            continue;
+                        }
+                        else if (commandArgs[0].equals("%lang")) {
+                            if (commandArgs.length != 2) {
+                                terminal.writer().println("Invalid number of arguments.");
+                                continue;
+                            }
+                            if (!(commandArgs[1].equals("pl") || commandArgs[1].equals("en"))) {
+                                terminal.writer().println("Invalid language. (en/pl expected)");
+                                continue;
+                            }
+                            lang = commandArgs[1];
+                        }
+                        else if (commandArgs[0].equals("%color") || commandArgs[0].equals("%details")) {
+                            if (commandArgs.length != 2) {
+                                terminal.writer().println("Invalid number of arguments.");
+                                continue;
+                            }
+                            if (!(commandArgs[1].equals("on") || commandArgs[1].equals("off"))) {
+                                terminal.writer().println("Invalid color option. (on/off expected)");
+                                continue;
+                            }
+                            if (commandArgs[0].equals("%details")) {
+                                showDetails = commandArgs[1].equals("on");
+                            }
+                            else if (commandArgs[0].equals("%color")) {
+                                showColors = commandArgs[1].equals("on");
+                            }
+                        }
+                        else {
+                            terminal.writer().println("Invalid command.");
+                        }
                     }
-                    catch (IOException e) {
-                        System.out.println("Index does not exist. Exiting.");
-                        System.exit(1);
+                    else {
+                        if (queryType != QueryType.PHRASE && command.contains(" ")) {
+                            terminal.writer().println(queryType.toString() + " requires");
+                        }
+                        try (FSDirectory indexDir = FSDirectory.open(indexPath)) {
+                            try (IndexReader indexReader = DirectoryReader.open(indexDir)) {
+                                indexSearcher = new IndexSearcher(indexReader);
+                                Query query;
+                                Query query1 = null, query2 = null;
+                                ArrayList<String> bodyTerms = analyze("body-" + lang, command, analyzer);
+                                ArrayList<String> titleTerms = analyze("title-" + lang, command, analyzer);
+                                String body = (bodyTerms.size() > 0) ? bodyTerms.get(0) : command.toLowerCase();
+                                String title = (titleTerms.size() > 0) ? titleTerms.get(0) : command.toLowerCase();
+
+                                if (queryType == QueryType.TERM) {
+                                    query1 = new TermQuery(new Term("body-" + lang, body));
+                                    query2 = new TermQuery(new Term("title-" + lang, title));
+                                }
+                                else if (queryType == QueryType.PHRASE) {
+                                    query1 = new PhraseQuery("body-" + lang,
+                                            bodyTerms.toArray(new String[bodyTerms.size()]));
+                                    query2 = new PhraseQuery("title-" + lang,
+                                            titleTerms.toArray(new String[titleTerms.size()]));
+                                }
+                                else if (queryType == QueryType.FUZZY) {
+                                    query1 = new FuzzyQuery(new Term("body-" + lang, body));
+                                    query2 = new FuzzyQuery(new Term("title-" + lang, title));
+                                }
+
+                                if (queryType == QueryType.PREFIX) { // additional functionality
+                                    query = new PrefixQuery(new Term("path", command));
+                                }
+                                else {
+                                    query = new BooleanQuery.Builder()
+                                            .add(query1, BooleanClause.Occur.SHOULD)
+                                            .add(query2, BooleanClause.Occur.SHOULD)
+                                            .build();
+                                }
+
+                                TopDocs topDocs = indexSearcher.search(query, limit);
+                                Formatter formatter;
+                                if (showColors) {
+                                    formatter = new ConsoleFormatter(AttributedStyle.RED);
+                                }
+                                else {
+                                    formatter = new ConsoleFormatter(AttributedStyle.WHITE);
+                                }
+                                QueryScorer scorer = new QueryScorer(query);
+                                Highlighter highlighter = new Highlighter(formatter, scorer);
+                                Fragmenter fragmenter = new SimpleSpanFragmenter(scorer, 70);
+                                highlighter.setTextFragmenter(fragmenter);
+                                Integer length = topDocs.scoreDocs.length;
+                                terminal.writer().println(new AttributedStringBuilder()
+                                        .append("Files count: ")
+                                        .style(AttributedStyle.DEFAULT.bold())
+                                        .append(length.toString())
+                                        .toAnsi());
+                                for (int i = 0; i < Math.min(limit, length); i++) {
+                                    int docId = topDocs.scoreDocs[i].doc;
+                                    Document doc = indexSearcher.doc(docId);
+                                    terminal.writer().println(new AttributedStringBuilder()
+                                            .style(AttributedStyle.DEFAULT.bold())
+                                            .append(doc.getField("path").stringValue() + ":")
+                                            .toAnsi());
+                                    if (showDetails) {
+                                        String text = doc.get("body-" + lang);
+                                        try {
+                                            String[] fragments = highlighter.getBestFragments(analyzer,
+                                                    "body-" + lang,
+                                                    text,
+                                                    10);
+                                            for (String fragment : fragments) {
+                                                terminal.writer().print(fragment);
+                                                terminal.writer().println(" ...");
+                                            }
+                                        }
+                                        catch (Exception e) {
+                                            terminal.writer().println("Error fetching context.");
+                                            terminal.writer().println(e.getMessage());
+                                        }
+                                    }
+                                }
+                            }
+                            catch (IOException e) {
+                                terminal.writer().println("Index does not exist. Exiting.");
+                                System.exit(1);
+                            }
+                        }
+                        catch (IOException e) {
+                            terminal.writer().println("Got IOException while opening index directory.");
+                            terminal.writer().println(e.getMessage());
+                        }
                     }
                 }
-                catch (IOException e) {
-                    System.out.println("Got IOException while opening index directory.");
-                    System.out.println(e.getMessage());
+                catch (UserInterruptException e) {
+                    break;
+                }
+                catch (EndOfFileException e) {
+                    break;
                 }
             }
-            System.out.print(">");
+        }
+        catch (IOException e) {
+            System.err.println("An error has occurred.");
+            System.err.println(e.toString());
         }
         System.exit(0);
     }

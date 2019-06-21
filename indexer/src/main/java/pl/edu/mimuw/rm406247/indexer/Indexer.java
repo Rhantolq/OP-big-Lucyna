@@ -54,7 +54,8 @@ public class Indexer implements AutoCloseable {
             indexDir = FSDirectory.open(indexPath);
             if (DirectoryReader.indexExists(indexDir)) {
                 iwc.setOpenMode(IndexWriterConfig.OpenMode.APPEND);
-            } else {
+            }
+            else {
                 iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
             }
         }
@@ -296,7 +297,8 @@ public class Indexer implements AutoCloseable {
                 remove(docsPath);
                 add(docsPath);
             }
-        } catch (FileNotFoundException e) {
+        }
+        catch(FileNotFoundException e) {
             System.out.println("No file containing indexed directories.");
         }
         try {

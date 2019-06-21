@@ -53,7 +53,8 @@ public class IndexerMain {
                         }
                         if (args[0].equals("--add")) {
                             indexer.addToIndexedPaths(docsPath);
-                        } else {
+                        }
+                        else {
                             indexer.removeFromIndexedPaths(docsPath);
                         }
                     }
@@ -78,7 +79,8 @@ public class IndexerMain {
                             while (scanner.hasNextLine()) {
                                 System.out.println(scanner.nextLine());
                             }
-                        } catch (FileNotFoundException e) {
+                        }
+                        catch (FileNotFoundException e) {
                             System.out.println("No file containing indexed directories.");
                         }
                     }

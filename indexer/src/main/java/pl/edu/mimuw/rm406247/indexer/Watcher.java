@@ -31,7 +31,8 @@ public class Watcher {
         Path prev = keys.get(key);
         if (prev == null) {
             System.out.format("register: %s\n", dir);
-        } else {
+        }
+        else {
             if (!dir.equals(prev)) {
                 System.out.format("update: %s -> %s\n", prev, dir);
             }
@@ -79,7 +80,8 @@ public class Watcher {
             WatchKey key;
             try {
                 key = watcher.take();
-            } catch (InterruptedException x) {
+            }
+            catch (InterruptedException x) {
                 return;
             }
 
@@ -130,7 +132,8 @@ public class Watcher {
                         if (Files.isDirectory(child, NOFOLLOW_LINKS)) {
                             registerAll(child);
                         }
-                    } catch (IOException x) {
+                    }
+                    catch (IOException x) {
                         // ignore to keep sample readbale
                     }
                 }

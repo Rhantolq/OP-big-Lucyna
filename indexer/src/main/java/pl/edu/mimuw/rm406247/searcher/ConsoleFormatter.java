@@ -2,14 +2,15 @@ package pl.edu.mimuw.rm406247.searcher;
 
 import org.apache.lucene.search.highlight.Formatter;
 import org.apache.lucene.search.highlight.TokenGroup;
+import org.jline.utils.AttributedStringBuilder;
+import org.jline.utils.AttributedStyle;
 
 public class ConsoleFormatter implements Formatter {
 
-    final String prefix, suffix;
+    final int color;
 
-    public ConsoleFormatter(String prefix, String suffix) {
-        this.prefix = prefix;
-        this.suffix = suffix;
+    public ConsoleFormatter(int color) {
+        this.color = color;
     }
 
     @Override
@@ -17,6 +18,9 @@ public class ConsoleFormatter implements Formatter {
         if (tokenGroup.getTotalScore() <= 0) {
             return originalText;
         }
-        return prefix + originalText + suffix;
+        return new AttributedStringBuilder()
+                .style(AttributedStyle.DEFAULT.foreground(color))
+                .append(originalText)
+                .toAnsi();
     }
 }
