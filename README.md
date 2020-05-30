@@ -12,7 +12,7 @@ For other options for calling indexMain please head to code or task description
 
 # Searcher
 Searcher searches the index with term queries, phrase queries and fuzzy queries (and prefix queries).
-It supports options like: "%lang en/pl", "%details on/off", "%limit <n>", "%color on/off", "%term", "%phrase", "%fuzzy".
+It supports options like: `"%lang en/pl", "%details on/off", "%limit <n>", "%color on/off", "%term", "%phrase", "%fuzzy"`.
 
 # Project
 The project is compiled using maven. The code is mostly documented in task description and through the variable names. 
