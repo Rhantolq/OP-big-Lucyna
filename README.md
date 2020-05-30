@@ -8,7 +8,7 @@ Indexer, in it's most complex function, monitors the given file tree (added prev
 (additions, deletions, updates) and updates the index for each update (allowing searcher to search for the contents of the files).
 Indexer indexes files supported by Apache Tika (or more precisely those needed for the project like pdf, txt, office files).
 For other options for calling indexMain please head to code or task description 
-(quick list: --add <dir>, --rm <dir>, --reindex, --list)
+`(quick list: --add <dir>, --rm <dir>, --reindex, --list)`
 
 # Searcher
 Searcher searches the index with term queries, phrase queries and fuzzy queries (and prefix queries).
